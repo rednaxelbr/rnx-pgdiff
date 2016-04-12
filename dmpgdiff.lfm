@@ -1,0 +1,32 @@
+object dtmAtualizaMod: TdtmAtualizaMod
+  OldCreateOrder = False
+  Height = 152
+  HorizontalOffset = 375
+  VerticalOffset = 219
+  Width = 390
+  object ZConnection1: TZConnection
+    ControlsCodePage = cCP_UTF8
+    AutoEncodeStrings = False
+    Properties.Strings = (
+      'AutoEncodeStrings='
+    )
+    Port = 0
+    Database = 'rnge2'
+    User = 'rednaxel'
+    Protocol = 'postgresql-8'
+    left = 44
+    top = 33
+  end
+  object ZReadOnlyQuery1: TZReadOnlyQuery
+    Connection = ZConnection1
+    Params = <>
+    left = 168
+    top = 33
+  end
+  object ZQuery1: TZQuery
+    Connection = ZConnection1
+    Params = <>
+    left = 295
+    top = 32
+  end
+end
