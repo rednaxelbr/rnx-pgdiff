@@ -68,6 +68,7 @@ procedure TAtualizaModelo.DoRun;
 var resp, ErrorMsg: String;
   versao_pg: Currency;
 begin
+  DefaultFormatSettings.DecimalSeparator := '.';
   WriteLn(Format('-- Rednaxel PostgreSQL Diff Tool - v%.2f',[VERSAO_APLIC]));
 
   // quick check parameters
@@ -162,7 +163,7 @@ begin
 
   if modo_exec then
   begin
-    WriteLn('-- EXECUTING COMMANDS...');
+    WriteLn(Format('-- EXECUTING COMMANDS (on %s)...',[IP_Slave]));
     if not dtmAtualizaMod.ConectaBanco(dtmAtualizaMod.ZConnection1, IP_Slave) then
     begin
       WriteLn(dtmAtualizaMod.MensagemConexao);
@@ -771,7 +772,7 @@ begin
   { add your help code here }
   WriteLn('Syntax: '+ExtractFileName(ApplicationName)+' -m IP [options]');
   WriteLn('  -m IP, --master=IP    Master server IP address.');
-  WriteLn('Opções:');
+  WriteLn('Options:');
   WriteLn('  -h, --help            Prints this message.');
   WriteLn('  -d, --debug           Prints internal SQL queries.');
   WriteLn('  -v, --verbose         Prints detailed output.');
