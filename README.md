@@ -11,3 +11,7 @@
       -q, --queries         Prints internal SQL queries.
       -v, --verbose         Prints detailed output.
       -x, --exec            Executes the DDL commands on slave.
+
+
+Example
+    $ rnx_pg_diff -m 192.168.1.10 -u rednaxel -d rnge3 -s rnx -v
