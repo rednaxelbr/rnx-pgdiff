@@ -14,4 +14,5 @@
 
 
 Example
+
     $ rnx_pg_diff -m 192.168.1.10 -u rednaxel -d rnge3 -s rnx -v
