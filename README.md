@@ -1,4 +1,7 @@
 # rnx-pgdiff
+
+This tool connects to 2 databases (master and slave), reverse-engineer their database structures and, with the --exec parameter, executes DLL commands on the slave to make them equal. It can create tables, add columns, add constraints, create or replace procedures and create or replace views.
+
     -- Rednaxel PostgreSQL Diff Tool - v1.05
     Syntax: rnx_pg_diff -m IP [options]
       -m IP, --master=IP    Master server IP address.
