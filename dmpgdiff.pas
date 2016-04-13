@@ -79,7 +79,6 @@ begin
     end;
     Connected := False;
     HostName := ip_serv;
-    //Password := DeCriptografa(md5_serial);
   end;
   MensagemConexao := '';
   try
@@ -93,7 +92,10 @@ begin
       Exit;
     end;
   end;
-  MensagemConexao := Format('Connected to "%s"',[ip_serv]);
+  if ip_serv = '' then
+    MensagemConexao := 'Connected to localhost'
+  else
+    MensagemConexao := Format('Connected to "%s"',[ip_serv]);
 end;
 
 function TdtmAtualizaMod.ExecutaSqlRetornaStringList(qry: TZReadOnlyQuery;

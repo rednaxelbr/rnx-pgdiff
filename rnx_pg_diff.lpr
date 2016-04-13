@@ -10,7 +10,7 @@ uses
   { you can add units after this };
 
 const
-  VERSAO_APLIC = 1.04;
+  VERSAO_APLIC = 1.05;
   MAX_VETOR = 9999;
 
 type
@@ -57,6 +57,7 @@ type
     function PrimaryKeyTabela(nometab:string):string;
     function VersaoPostgreSQL(out numerica:Currency): string;
   public
+    pg_username, pg_database, pg_schema, pg_password: string;
     constructor Create(TheOwner: TComponent); override;
     destructor Destroy; override;
     procedure WriteHelp; virtual;
@@ -72,7 +73,7 @@ begin
   WriteLn(Format('-- Rednaxel PostgreSQL Diff Tool - v%.2f',[VERSAO_APLIC]));
 
   // quick check parameters
-  ErrorMsg:=CheckOptions('hm:vds:xc','help master: verbose debug slave: exec commands');
+  ErrorMsg:=CheckOptions('hm:vql:xcu:p:d:s:','help master: verbose queries local: exec commands user: password: database: schema:');
   if ErrorMsg<>'' then
   begin
     ShowException(Exception.Create(ErrorMsg));
@@ -88,11 +89,25 @@ begin
     Terminate;
     Exit;
   end;
-  IP_Slave := GetOptionValue('s','slave');
-  modo_debug := HasOption('d','debug');
+  IP_Slave := GetOptionValue('l','local');
+  modo_debug := HasOption('q','queries');
   modo_verbose := HasOption('v','verbose');
   modo_exec := HasOption('x','exec');
   modo_cmd := HasOption('c','commands');
+
+  pg_username := GetOptionValue('u','user');
+  dtmAtualizaMod.ZConnection1.User := pg_username;
+
+  pg_password := GetOptionValue('p','password');
+  if pg_password <> '' then
+    dtmAtualizaMod.ZConnection1.Password := pg_password;
+
+  pg_database := GetOptionValue('d','database');
+  dtmAtualizaMod.ZConnection1.Database := pg_database;
+
+  pg_schema := GetOptionValue('s','schema');
+  if pg_schema = '' then
+    pg_schema := 'public';
 
   //--- conecta com o servidor slave
   if modo_verbose then
@@ -215,7 +230,7 @@ var cmd_sql: string;
 begin
   cmd_sql := Format('SELECT table_name FROM information_schema.tables'+
     ' WHERE table_catalog = %s AND table_schema = %s AND table_type <> %s'+
-    ' ORDER BY 1', [QuotedStr('rnge2'), QuotedStr('rnx'), QuotedStr('VIEW')]);
+    ' ORDER BY 1', [QuotedStr(pg_database), QuotedStr(pg_schema), QuotedStr('VIEW')]);
   if modo_debug then
     WriteLn('/*'+sLineBreak+cmd_sql+sLineBreak+'*/');
   dtmAtualizaMod.ExecutaSqlRetornaStringList(dtmAtualizaMod.ZReadOnlyQuery1, cmd_sql, dest, true);
@@ -232,7 +247,7 @@ begin
   'SELECT table_name FROM information_schema.tables WHERE table_catalog = %s'+
   ' AND table_schema = %s AND table_type <> %s) as foo'+
   ' JOIN information_schema.columns c ON (foo.table_name = c.table_name)'+
-  ' ORDER BY 1, 2', [QuotedStr('rnge2'), QuotedStr('rnx'), QuotedStr('VIEW')]);
+  ' ORDER BY 1, 2', [QuotedStr(pg_database), QuotedStr(pg_schema), QuotedStr('VIEW')]);
   if modo_debug then
     WriteLn('/*'+sLineBreak+cmd_sql+sLineBreak+'*/');
   dtmAtualizaMod.ExecutaSqlRetornaStringList(dtmAtualizaMod.ZReadOnlyQuery1, cmd_sql, dest);
@@ -247,7 +262,7 @@ begin
     Format(' pg_catalog.pg_get_triggerdef(t.oid) as definicao FROM pg_catalog.pg_class r'+
     ' JOIN pg_catalog.pg_trigger t ON r.oid = t.tgrelid WHERE r.relkind = ''r'' AND NOT t.tgisinternal'+
     ' AND r.relname IN (SELECT tablename FROM pg_tables WHERE schemaname = %s) order by relname, tgname',
-    [QuotedStr('rnx')]);
+    [QuotedStr(pg_schema)]);
   if modo_debug then
     WriteLn('/*'+sLineBreak+cmd_sql+sLineBreak+'*/');
   dtmAtualizaMod.ExecutaSqlRetornaStringList(dtmAtualizaMod.ZReadOnlyQuery1, cmd_sql, dest);
@@ -265,7 +280,7 @@ begin
   parte2 := ' FROM pg_proc p LEFT OUTER JOIN pg_language l ON (prolang = l.oid)' +
     Format(' WHERE proowner = (SELECT usesysid FROM pg_user WHERE usename = %s)'+
     ' AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = %s)',
-    [QuotedStr('rednaxel'), QuotedStr('rnx')]);
+    [QuotedStr(pg_username), QuotedStr(pg_schema)]);
   cmd_sql := parte1 + parte2 + ' order by 1, 2';
   if modo_debug then
     WriteLn('/*'+sLineBreak+cmd_sql+sLineBreak+'*/');
@@ -298,7 +313,7 @@ begin
   cmd_sql := Format('SELECT relname, conname, md5(pg_catalog.pg_get_constraintdef(r.oid, true)) as md5con,'+
     ' pg_catalog.pg_get_constraintdef(r.oid, true) FROM pg_constraint r'+
     ' JOIN pg_class c ON (c.oid = conrelid) WHERE connamespace IN '+
-    '(SELECT oid FROM pg_namespace WHERE nspname = %s) order by 1, 2', [QuotedStr('rnx')]);
+    '(SELECT oid FROM pg_namespace WHERE nspname = %s) order by 1, 2', [QuotedStr(pg_schema)]);
   if modo_debug then
     WriteLn('/*'+sLineBreak+cmd_sql+sLineBreak+'*/');
   dtmAtualizaMod.ExecutaSqlRetornaStringList(dtmAtualizaMod.ZReadOnlyQuery1, cmd_sql, dest);
@@ -312,7 +327,7 @@ var i, ret: integer;
   cmd_sql, nomeview: string;
 begin
   cmd_sql := Format('SELECT viewname, md5(definition) as md5def FROM pg_views WHERE schemaname = %s'+
-    ' AND viewowner = %s ORDER BY 1', [QuotedStr('rnx'), QuotedStr('rednaxel')]);
+    ' AND viewowner = %s ORDER BY 1', [QuotedStr(pg_schema), QuotedStr(pg_username)]);
   if modo_debug then
     WriteLn('/*'+sLineBreak+cmd_sql+sLineBreak+'*/');
   ret := dtmAtualizaMod.ExecutaSqlRetornaStringList(dtmAtualizaMod.ZReadOnlyQuery1, cmd_sql, dest);
@@ -327,7 +342,7 @@ begin
   begin
     nomeview := ExtractDelimited(1,dest[i],['|']);
     cmd_sql := Format('SELECT definition FROM pg_views WHERE viewname = %s AND schemaname = %s'+
-      ' AND viewowner = %s', [QuotedStr(nomeview), QuotedStr('rnx'), QuotedStr('rednaxel')]);
+      ' AND viewowner = %s', [QuotedStr(nomeview), QuotedStr(pg_schema), QuotedStr(pg_username)]);
     vet[i] := dtmAtualizaMod.ExecutaSqlRetornaString(dtmAtualizaMod.ZReadOnlyQuery1, cmd_sql);
   end;
 end;
@@ -702,12 +717,13 @@ end;
 function TAtualizaModelo.PrimaryKeyTabela(nometab: string): string;
 var cmd_sql, resp: string;
 begin
-  cmd_sql := 'SELECT array_to_string(array(select attname from pg_attribute'+
+  cmd_sql := Format('SELECT array_to_string(array(select attname from pg_attribute'+
     ' where attrelid = conrelid and attnum = ANY(conkey)'+
     ' order by find_array_element(attnum,conkey)),'','') as colunas'+
     ' FROM pg_constraint JOIN pg_class c ON (c.oid = conrelid)'+
     ' WHERE connamespace IN (SELECT oid FROM pg_namespace'+
-    ' WHERE nspname = ''rnx'') AND contype = ''p'' AND relname = '+QuotedStr(nometab);
+    ' WHERE nspname = %s) AND contype = ''p'' AND relname = %s',
+    [QuotedStr(pg_schema),QuotedStr(nometab)]);
   if modo_debug then
     WriteLn(sLineBreak+'/*'+sLineBreak+cmd_sql+sLineBreak+'*/');
   resp := dtmAtualizaMod.ExecutaSqlRetornaString(dtmAtualizaMod.ZReadOnlyQuery1, cmd_sql);
@@ -773,8 +789,12 @@ begin
   WriteLn('Syntax: '+ExtractFileName(ApplicationName)+' -m IP [options]');
   WriteLn('  -m IP, --master=IP    Master server IP address.');
   WriteLn('Options:');
+  WriteLn('  -u, --username        Username.');
+  WriteLn('  -p, --password        Password.');
+  WriteLn('  -d, --database        Database.');
+  WriteLn('  -s, --schema          Schema (default=public).');
   WriteLn('  -h, --help            Prints this message.');
-  WriteLn('  -d, --debug           Prints internal SQL queries.');
+  WriteLn('  -q, --queries         Prints internal SQL queries.');
   WriteLn('  -v, --verbose         Prints detailed output.');
   WriteLn('  -x, --exec            Executes the DDL commands on slave.');
 end;
