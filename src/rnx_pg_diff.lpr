@@ -10,7 +10,7 @@ uses
   { you can add units after this };
 
 const
-  VERSAO_APLIC = 1.05;
+  VERSAO_APLIC = 1.06;
   MAX_VETOR = 9999;
 
 type
@@ -789,6 +789,7 @@ begin
   WriteLn('Syntax: '+ExtractFileName(ApplicationName)+' -m IP [options]');
   WriteLn('  -m IP, --master=IP    Master server IP address.');
   WriteLn('Options:');
+  WriteLn('  -l IP, --local=IP     Slave server IP address (default=localhost).');
   WriteLn('  -u, --username        Username.');
   WriteLn('  -p, --password        Password.');
   WriteLn('  -d, --database        Database.');

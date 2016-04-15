@@ -58,7 +58,7 @@
   <CompilerOptions>
     <Version Value="11"/>
     <Target>
-      <Filename Value="rnx_pg_diff"/>
+      <Filename Value="../rnx_pg_diff"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
