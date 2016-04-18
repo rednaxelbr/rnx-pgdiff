@@ -221,8 +221,7 @@ begin
     end;
   end;
 
-  if modo_verbose or modo_exec then
-    WriteLn('-- OK');
+  WriteLn('-- OK');
 
   // stop program loop
   Terminate;
