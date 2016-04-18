@@ -10,7 +10,7 @@ uses
   { you can add units after this };
 
 const
-  VERSAO_APLIC = 1.06;
+  VERSAO_APLIC = 1.07;
   MAX_VETOR = 9999;
 
 type
@@ -178,13 +178,16 @@ begin
 
   if modo_exec then
   begin
-    WriteLn(Format('-- EXECUTING COMMANDS (on %s)...',[IP_Slave]));
+    WriteLn(Format('-- EXECUTING COMMANDS (on "%s")...',[IP_Slave]));
     if not dtmAtualizaMod.ConectaBanco(dtmAtualizaMod.ZConnection1, IP_Slave) then
     begin
       WriteLn(dtmAtualizaMod.MensagemConexao);
       Terminate;
       Exit;
     end;
+    resp := dtmAtualizaMod.ExecutaSqlRetornaString(dtmAtualizaMod.ZReadOnlyQuery1,
+      'SHOW search_path');
+    WriteLn('-- search_path = '+resp);
     resp := dtmAtualizaMod.GravaSQL('BEGIN TRANSACTION;');
     if resp <> 'OK' then
     begin
@@ -218,7 +221,7 @@ begin
     end;
   end;
 
-  if modo_verbose then
+  if modo_verbose or modo_exec then
     WriteLn('-- OK');
 
   // stop program loop
@@ -575,7 +578,7 @@ begin
       slavmd5 := ExtractDelimited(3,lstSlaveTriggers[j],['|']);
       if mastmd5 <> slavmd5 then
       begin
-        WriteLn('-- (removing trigger '+masttrig+')');
+        WriteLn('-- Replacing trigger '+masttrig+' (DROP and CREATE)');
         atualizar := true;
         cmd_sql := Format('DROP TRIGGER %s ON %s;',[masttrig, mastable]);
         if modo_cmd then
@@ -615,6 +618,7 @@ procedure TAtualizaModelo.VerificaConstraints;
 var i, j: integer;
   mastable, mastcon, slavtabl, slavcon, mastmd5, slavmd5, sqlcon: string;
   achou, atualizar: boolean;
+  resp, cmd_sql: string;
 begin
   for i:=0 to lstMasterConstraints.Count-1 do
   begin
@@ -639,8 +643,7 @@ begin
     if not achou then
     begin
       atualizar := true;
-      if modo_verbose then
-        WriteLn(Format('-- Creating constraint %s em %s',[mastcon, mastable]));
+      WriteLn(Format('-- New constraint %s em %s',[mastcon, mastable]));
     end
     else
     begin
@@ -648,12 +651,37 @@ begin
       if mastmd5 <> slavmd5 then
       begin
         atualizar := true;
-        WriteLn(Format('ALTER TABLE %s DROP CONSTRAINT %s;',[mastable, mastcon]));
+        WriteLn(Format('-- Replacing constraint %s em %s (DROP and ADD)',[mastcon, mastable]));
+        cmd_sql := Format('ALTER TABLE %s DROP CONSTRAINT %s;',[mastable, mastcon]);
+        if modo_cmd then
+          WriteLn(cmd_sql);
+        if modo_exec then
+        begin
+          resp := dtmAtualizaMod.GravaSQL(cmd_sql);
+          if resp <> 'OK' then
+          begin
+            WriteLn(resp);
+            Terminate;
+            Exit;
+          end;
+        end;
       end;
     end;
     if atualizar then
     begin
-      WriteLn(Format('ALTER TABLE %s ADD CONSTRAINT %s %s;',[mastable, mastcon, sqlcon]));
+      cmd_sql := Format('ALTER TABLE %s ADD CONSTRAINT %s %s;',[mastable, mastcon, sqlcon]);
+      if modo_cmd then
+        WriteLn(cmd_sql);
+      if modo_exec then
+      begin
+        resp := dtmAtualizaMod.GravaSQL(cmd_sql);
+        if resp <> 'OK' then
+        begin
+          WriteLn(resp);
+          Terminate;
+          Exit;
+        end;
+      end;
     end;
   end;
 end;
