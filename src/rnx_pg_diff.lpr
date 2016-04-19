@@ -10,7 +10,7 @@ uses
   { you can add units after this };
 
 const
-  VERSAO_APLIC = 1.08;
+  VERSAO_APLIC = 1.09;
   MAX_VETOR = 9999;
 
 type
@@ -49,6 +49,7 @@ type
     procedure CarregaFuncoes(dest: TStringList; out vet: array of string);
     procedure CarregaViews(dest: TStringList; out vet: array of string);
     //---
+    function IndiceTabelaNaListaDeColunas(dest:TStringList; nometab:string):integer;
     procedure VerificaTabelas;
     procedure VerificaFuncoes(delimitador: string);
     procedure VerificaTriggers;
@@ -349,18 +350,39 @@ begin
   end;
 end;
 
+function TAtualizaModelo.IndiceTabelaNaListaDeColunas(dest:TStringList; nometab: string): integer;
+var i: integer;
+  tabcolm: string;
+begin
+  for i:=0 to dest.Count-1 do
+  begin
+    tabcolm := ExtractDelimited(1,dest[i],['|']);
+    if tabcolm = nometab then
+    begin
+      Result := i;
+      Exit;
+    end;
+  end;
+  Result := -1;
+end;
+
 procedure TAtualizaModelo.VerificaTabelas;
 var i, j, k, idx, idxm, ordm, ords: integer;
-  tabmast, tabcolm, ulttabk, tabcols, colmast, colslav: string;
+  tabmast, tabcolm, tabcols, colmast, colslav: string;
   ddl_tipo, ddl_notnull, ddl_default, ddl_pk: string;
   ddl_charmax, ddl_numprec, ddl_numscale, ddl_dtprec: integer;
   resp, cmd_sql: string;
 begin
-  idxm := 0;
   k := 0;
   for i:=0 to lstMasterTabelas.Count-1 do
   begin
     tabmast := ExtractDelimited(1,lstMasterTabelas[i],['|']);
+    idxm := IndiceTabelaNaListaDeColunas(lstMasterColunas, tabmast);
+    if idxm < 0 then
+    begin
+      WriteLn(Format('-- Columns for table %s not found on MASTER!',[tabmast]));
+      Continue;
+    end;
     idx := lstSlaveTabelas.IndexOf(tabmast);
     if idx < 0 then
     begin
@@ -425,6 +447,13 @@ begin
       end;
       Continue;
     end;
+    //--- found the table on slave, locate it in the columns vector
+    k := IndiceTabelaNaListaDeColunas(lstSlaveColunas, tabmast);
+    if k < 0 then
+    begin
+      WriteLn(Format('-- Columns for table %s not found on SLAVE!',[tabmast]));
+      Continue;
+    end;
     for j:=idxm to lstMasterColunas.Count-1 do
     begin
       tabcolm := ExtractDelimited(1,lstMasterColunas[j],['|']);
@@ -436,30 +465,35 @@ begin
       tabcols := ExtractDelimited(1,lstSlaveColunas[k],['|']);
       if tabcols <> tabmast then
       begin
-        WriteLn(Format('-- Table %s does not exist on MASTER.',[tabcols]));
-        ulttabk := tabcols;
-        repeat
-          Inc(k);
-          tabcols := ExtractDelimited(1,lstSlaveColunas[k],['|']);
-          if (tabcols <> tabmast) and (tabcols <> ulttabk) then
-          begin
-            WriteLn(Format('-- Table %s does not exist on MASTER.',[tabcols]));
-            ulttabk := tabcols;
-          end;
-        until (tabcols = tabmast) or (k >= lstSlaveColunas.Count-1);
-        if k >= lstSlaveColunas.Count-1 then Continue;
-      end;
-      colmast := ExtractDelimited(3,lstMasterColunas[j],['|']);
-      colslav := ExtractDelimited(3,lstSlaveColunas[k],['|']);
-      if colmast <> colslav then
-      begin
         ordm := StrToIntDef(ExtractDelimited(2,lstMasterColunas[j],['|']),0);
-        ords := StrToIntDef(ExtractDelimited(2,lstMasterColunas[k-1],['|']),0);
-        if ordm-1 = ords then
+        ords := StrToIntDef(ExtractDelimited(2,lstSlaveColunas[k-1],['|']),0);
+        //WriteLn(Format('-- %d x %d', [ordm, ords]));
+        if ordm > ords then
         begin
+          colmast := ExtractDelimited(3,lstMasterColunas[j],['|']);
           ddl_tipo := ExtractDelimited(4,lstMasterColunas[j],['|']);
-          WriteLn(Format('-- New column %s on table %s',[ddl_tipo, tabmast]));
-          cmd_sql := Format('ALTER TABLE %s ADD COLUMN %s %s;',[tabmast, colmast, ddl_tipo]);
+          ddl_notnull := ExtractDelimited(5,lstMasterColunas[j],['|']);
+          ddl_default := ExtractDelimited(6,lstMasterColunas[j],['|']);
+          ddl_charmax := StrToIntDef(ExtractDelimited(7,lstMasterColunas[j],['|']),-1);
+          ddl_numprec := StrToIntDef(ExtractDelimited(8,lstMasterColunas[j],['|']),-1);
+          ddl_numscale := StrToIntDef(ExtractDelimited(9,lstMasterColunas[j],['|']),-1);
+          ddl_dtprec := StrToIntDef(ExtractDelimited(10,lstMasterColunas[j],['|']),-1);
+          //---
+          WriteLn(Format('-- New column %s %s on table %s',[colmast, ddl_tipo, tabmast]));
+          cmd_sql := Format('ALTER TABLE %s ADD COLUMN %s %s',[tabmast, colmast, ddl_tipo]);
+          if ddl_charmax >= 0 then
+            cmd_sql := cmd_sql + Format('(%d)',[ddl_charmax]);
+          if (ddl_tipo = 'numeric') and (ddl_numprec >= 0) then
+          begin
+            if ddl_numscale < 0 then
+              cmd_sql := cmd_sql + Format('(%d)',[ddl_numprec])
+            else
+              cmd_sql := cmd_sql + Format('(%d,%d)',[ddl_numprec, ddl_numscale]);
+          end;
+          if (ddl_tipo <> 'date') and (ddl_dtprec >= 0) then
+            cmd_sql := cmd_sql + Format('(%d)',[ddl_dtprec]);
+          cmd_sql := cmd_sql + ';';
+          //---
           if modo_cmd then
             WriteLn(cmd_sql);
           if modo_exec then
@@ -472,8 +506,17 @@ begin
               Exit;
             end;
           end;
-          Break;
+          Continue;
         end;
+        Inc(k);
+        Continue;
+      end;
+      colmast := ExtractDelimited(3,lstMasterColunas[j],['|']);
+      colslav := ExtractDelimited(3,lstSlaveColunas[k],['|']);
+      if colmast <> colslav then
+      begin
+        WriteLn(Format('-- Column %s.%s (MASTER) differs from %s.%s (SLAVE)...',
+          [tabmast, colmast, tabcols, colslav]));
       end;
       Inc(k);
     end;

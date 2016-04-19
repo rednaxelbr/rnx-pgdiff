@@ -33,7 +33,7 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
-        <CommandLineParams Value="-m 10.10.1.10"/>
+        <CommandLineParams Value="-m 10.10.1.10 -l 10.10.1.4 -u rednaxel -d rnge2 -s rnx -v"/>
       </local>
     </RunParams>
     <RequiredPackages Count="1">
