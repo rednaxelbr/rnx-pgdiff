@@ -10,7 +10,7 @@ uses
   { you can add units after this };
 
 const
-  VERSAO_APLIC = 1.07;
+  VERSAO_APLIC = 1.08;
   MAX_VETOR = 9999;
 
 type
@@ -459,7 +459,7 @@ begin
         begin
           ddl_tipo := ExtractDelimited(4,lstMasterColunas[j],['|']);
           WriteLn(Format('-- New column %s on table %s',[ddl_tipo, tabmast]));
-          cmd_sql := Format('ALTER TABLE %s ADD COLUMN %s %s;',[tabmast, ddl_tipo]);
+          cmd_sql := Format('ALTER TABLE %s ADD COLUMN %s %s;',[tabmast, colmast, ddl_tipo]);
           if modo_cmd then
             WriteLn(cmd_sql);
           if modo_exec then
