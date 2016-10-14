@@ -12,7 +12,7 @@ object dtmAtualizaMod: TdtmAtualizaMod
     )
     Port = 0
     User = 'rednaxel'
-    Protocol = 'postgresql-8'
+    Protocol = 'postgresql-9'
     left = 44
     top = 33
   end
@@ -24,6 +24,7 @@ object dtmAtualizaMod: TdtmAtualizaMod
   end
   object ZQuery1: TZQuery
     Connection = ZConnection1
+    ParamCheck = False
     Params = <>
     left = 295
     top = 32
