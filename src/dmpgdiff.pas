@@ -31,6 +31,8 @@ type
     function ExecutaSqlRetornaString(qry: TZReadOnlyQuery; comando_sql:string;valor_default:
       string='';erro_com_sql:boolean = true): string;
     function GravaSQL(cmd_sql:string):string;
+    function TransactionBegin:boolean;
+    function TransactionCommit:boolean;
   end;
 
 var
@@ -173,6 +175,34 @@ begin
     end;
   end;
   Result := 'OK';
+end;
+
+function TdtmAtualizaMod.TransactionBegin:boolean;
+var resp: string;
+begin
+  resp := dtmAtualizaMod.GravaSQL('BEGIN TRANSACTION;');
+  if resp <> 'OK' then
+  begin
+    WriteLn(resp);
+    //Terminate;
+    Result := false;
+    Exit;
+  end;
+  Result := true;
+end;
+
+function TdtmAtualizaMod.TransactionCommit: boolean;
+var resp: string;
+begin
+  resp := dtmAtualizaMod.GravaSQL('COMMIT;');
+  if resp <> 'OK' then
+  begin
+    WriteLn(resp);
+    //Terminate;
+    Result := false;
+    Exit;
+  end;
+  Result := true;
 end;
 
 end.

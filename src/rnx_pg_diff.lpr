@@ -10,7 +10,7 @@ uses
   { you can add units after this };
 
 const
-  VERSAO_APLIC = 1.09;
+  VERSAO_APLIC = 1.12;
   MAX_VETOR = 9999;
 
 type
@@ -186,20 +186,12 @@ begin
       Terminate;
       Exit;
     end;
-    resp := dtmAtualizaMod.ExecutaSqlRetornaString(dtmAtualizaMod.ZReadOnlyQuery1,
-      'SHOW search_path');
-    WriteLn('-- search_path = '+resp);
-    resp := dtmAtualizaMod.GravaSQL('BEGIN TRANSACTION;');
-    if resp <> 'OK' then
-    begin
-      WriteLn(resp);
-      Terminate;
-      Exit;
-    end;
     if modo_verbose then
     begin
+      resp := dtmAtualizaMod.ExecutaSqlRetornaString(dtmAtualizaMod.ZReadOnlyQuery1,
+        'SHOW search_path');
+      WriteLn('-- search_path = '+resp);
       WriteLn('-- SLAVE='+dtmAtualizaMod.MensagemConexao);
-      WriteLn('-- BEGIN TRANSACTION');
     end;
   end;
 
@@ -209,18 +201,6 @@ begin
   VerificaFuncoes('$function$');
   VerificaTriggers;
   VerificaViews;
-
-  if modo_exec then
-  begin
-    WriteLn('-- COMMIT...');
-    resp := dtmAtualizaMod.GravaSQL('COMMIT;');
-    if resp <> 'OK' then
-    begin
-      WriteLn(resp);
-      Terminate;
-      Exit;
-    end;
-  end;
 
   WriteLn('-- OK');
 
@@ -589,11 +569,12 @@ end;
 procedure TAtualizaModelo.VerificaTriggers;
 var i, j: integer;
   mastable, masttrig, slavtabl, slavtrig, mastmd5, slavmd5, sqltrig: string;
-  achou, atualizar: boolean;
+  achou, atualizar, requer_commit: boolean;
   resp, cmd_sql: string;
 begin
   for i:=0 to lstMasterTriggers.Count-1 do
   begin
+    requer_commit := false;
     mastable := ExtractDelimited(1,lstMasterTriggers[i],['|']);
     masttrig := ExtractDelimited(2,lstMasterTriggers[i],['|']);
     mastmd5 := ExtractDelimited(3,lstMasterTriggers[i],['|']);
@@ -627,6 +608,8 @@ begin
           WriteLn(cmd_sql);
         if modo_exec then
         begin
+          if not dtmAtualizaMod.TransactionBegin then Exit;
+          requer_commit := true;
           resp := dtmAtualizaMod.GravaSQL(cmd_sql);
           if resp <> 'OK' then
           begin
@@ -651,6 +634,8 @@ begin
           Terminate;
           Exit;
         end;
+        if requer_commit then
+          if not dtmAtualizaMod.TransactionCommit then Exit;
       end;
     end;
   end;
@@ -659,11 +644,12 @@ end;
 procedure TAtualizaModelo.VerificaConstraints;
 var i, j: integer;
   mastable, mastcon, slavtabl, slavcon, mastmd5, slavmd5, sqlcon: string;
-  achou, atualizar: boolean;
+  achou, atualizar, requer_commit: boolean;
   resp, cmd_sql: string;
 begin
   for i:=0 to lstMasterConstraints.Count-1 do
   begin
+    requer_commit := false;
     mastable := ExtractDelimited(1,lstMasterConstraints[i],['|']);
     mastcon := ExtractDelimited(2,lstMasterConstraints[i],['|']);
     mastmd5 := ExtractDelimited(3,lstMasterConstraints[i],['|']);
@@ -699,6 +685,8 @@ begin
           WriteLn(cmd_sql);
         if modo_exec then
         begin
+          if not dtmAtualizaMod.TransactionBegin then Exit;
+          requer_commit := true;
           resp := dtmAtualizaMod.GravaSQL(cmd_sql);
           if resp <> 'OK' then
           begin
@@ -723,6 +711,8 @@ begin
           Terminate;
           Exit;
         end;
+        if requer_commit then
+          if not dtmAtualizaMod.TransactionCommit then Exit;
       end;
     end;
   end;
@@ -766,12 +756,14 @@ begin
     end;
     if atualizar then
     begin
-      cmd_sql := Format('CREATE OR REPLACE VIEW %s AS', [mastview]) + sLineBreak;
+      cmd_sql := Format('DROP VIEW IF EXISTS %s;', [mastview]) + sLineBreak;
+      cmd_sql := cmd_sql + Format('CREATE OR REPLACE VIEW %s AS', [mastview]) + sLineBreak;
       cmd_sql := cmd_sql + Format('%s;', [vetMasterViews[i]]);
       if modo_cmd then
         WriteLn(cmd_sql);
       if modo_exec then
       begin
+        if not dtmAtualizaMod.TransactionBegin then Exit;
         resp := dtmAtualizaMod.GravaSQL(cmd_sql);
         if resp <> 'OK' then
         begin
@@ -779,6 +771,7 @@ begin
           Terminate;
           Exit;
         end;
+        if not dtmAtualizaMod.TransactionCommit then Exit;
       end;
     end;
   end;
