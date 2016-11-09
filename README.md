@@ -13,7 +13,7 @@ DDL commands supported:
 
 Syntax:
 
-    -- Rednaxel PostgreSQL Diff Tool - v1.05
+    -- Rednaxel PostgreSQL Diff Tool - v1.12
     Syntax: rnx_pg_diff -m IP [options]
       -m IP, --master=IP    Master server IP address.
       -l IP, --local=IP     Slave server IP address (default=localhost).
