@@ -1,6 +1,6 @@
 # rnx-pgdiff - PostgreSQL diff tool
 
-This tool connects to 2 databases (master and slave), reverse-engineer their database structures and, with the --exec parameter, executes DDL commands on the slave to make them equal. 
+This tool connects to 2 databases (master and slave), reverse-engineer their database structures and, when used with the --exec parameter, executes DDL commands on the slave to make them equal. 
 
 DDL commands supported:
 
