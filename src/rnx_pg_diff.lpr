@@ -10,7 +10,7 @@ uses
   { you can add units after this };
 
 const
-  VERSAO_APLIC = 1.12;
+  VERSAO_APLIC = 1.13;
   MAX_VETOR = 9999;
 
 type
@@ -347,9 +347,9 @@ begin
 end;
 
 procedure TAtualizaModelo.VerificaTabelas;
-var i, j, k, idx, idxm, ordm, ords: integer;
+var i, j, k, idx, idxm, ordm, ords, tz: integer;
   tabmast, tabcolm, tabcols, colmast, colslav: string;
-  ddl_tipo, ddl_notnull, ddl_default, ddl_pk: string;
+  ddl_tipo, ddl_notnull, ddl_default, ddl_pk, ddl_timezone: string;
   ddl_charmax, ddl_numprec, ddl_numscale, ddl_dtprec: integer;
   resp, cmd_sql: string;
 begin
@@ -387,7 +387,15 @@ begin
         ddl_numprec := StrToIntDef(ExtractDelimited(8,lstMasterColunas[j],['|']),-1);
         ddl_numscale := StrToIntDef(ExtractDelimited(9,lstMasterColunas[j],['|']),-1);
         ddl_dtprec := StrToIntDef(ExtractDelimited(10,lstMasterColunas[j],['|']),-1);
+        ddl_timezone := '';
         //--- monta comando
+        tz := Pos(ddl_tipo,'time zone');
+        if tz > 0 then
+        begin
+          tz := Pos(ddl_tipo,'with');
+          ddl_timezone := Copy(ddl_tipo, tz, 99);
+          ddl_tipo := LeftStr(ddl_tipo,tz-1);
+        end;
         cmd_sql := cmd_sql + Format('  %s %s',[colmast, ddl_tipo]);
         if ddl_charmax >= 0 then
           cmd_sql := cmd_sql + Format('(%d)',[ddl_charmax]);
@@ -399,7 +407,7 @@ begin
             cmd_sql := cmd_sql + Format('(%d,%d)',[ddl_numprec, ddl_numscale]);
         end;
         if (ddl_tipo <> 'date') and (ddl_dtprec >= 0) then
-          cmd_sql := cmd_sql + Format('(%d)',[ddl_dtprec]);
+          cmd_sql := cmd_sql + Format('(%d)',[ddl_dtprec]) + ddl_timezone;
         //--- modificadores
         cmd_sql := cmd_sql + ddl_notnull;
         if ddl_default <> '' then
